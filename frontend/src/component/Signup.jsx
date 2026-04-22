@@ -1,15 +1,16 @@
 import React, { useState } from "react";
-import axios from "axios";
+import signupUser from "../queries/signupQuery";
+import "./Signup.css";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
+    username: "",
     email: "",
     password: "",
   });
 
   const [message, setMessage] = useState("");
 
-  // handle input change
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -17,48 +18,57 @@ export default function Signup() {
     });
   };
 
-  // handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/signup",
-        formData
-      );
-      setMessage(res.data);
-    } catch (error) {
-      setMessage(error.response?.data || "Signup Failed ❌");
+    const res = await signupUser(formData);
+
+    if (res.success) {
+      setMessage("Signup successful ✅");
+    } else {
+      setMessage("Signup Failed ❌");
     }
   };
 
   return (
-    <div className="login-container">
-      <form onSubmit={handleSubmit} className="login-form">
-        <h2>Signup</h2>
+    <div className="container">
+      <div className="card">
+        <h2>Create Account</h2>
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Enter Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
+        <div className="inputBox">
+          <input
+            type="text"
+            name="username"
+            required
+            onChange={handleChange}
+          />
+          <span>Username</span>
+        </div>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Enter Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
+        <div className="inputBox">
+          <input
+            type="email"
+            name="email"
+            required
+            onChange={handleChange}
+          />
+          <span>Email</span>
+        </div>
 
-        <button type="submit">Signup</button>
+        <div className="inputBox">
+          <input
+            type="password"
+            name="password"
+            required
+            onChange={handleChange}
+          />
+          <span>Password</span>
+        </div>
 
-        <p className="message">{message}</p>
-      </form>
+        <button>Sign Up</button>
+
+        <p className="msg">{message}</p>
+      </div>
     </div>
   );
 }

@@ -6,11 +6,12 @@ from rest_framework.response import Response
 def signup(request):
     username = request.data.get('username')
     password = request.data.get('password')
+    email = request.data.get('email')
 
     if User.objects.filter(username=username).exists():
         return Response({'error': 'User already exists'})
 
-    user = User.objects.create_user(username=username, password=password)
+    user = User.objects.create_user(username=username, password=password, email=email)
 
     return Response({'message': 'User created successfully'})
 

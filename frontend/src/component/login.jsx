@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import axios from "axios";
-import "./Login.css"; // 👈 import CSS
+import loginUser from "../queries/loginQuery";
+import "./Login.css";
 
 export default function Login() {
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: "",
   });
 
@@ -17,51 +17,51 @@ export default function Login() {
     });
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  try {
-    const res = await axios.post(
-      "http://localhost:5000/login",
-      formData
-    );
+    const res = await loginUser(formData);
 
-    // ✅ SAVE TOKEN
-    localStorage.setItem("token", res.data.token);
-
-    setMessage("Login Successful ✅");
-  } catch (error) {
-    setMessage("Invalid Credentials ❌");
-  }
-};
+    if (res.success) {
+      setMessage("Login successful ✅");
+    } else {
+      setMessage("Invalid credentials ❌");
+    }
+  };
 
   return (
-    <div className="login-container">
-      <form onSubmit={handleSubmit} className="login-form">
-        <h2>Login</h2>
+    <div className="container">
+      <div className="card">
+        <h2>Welcome Back</h2>
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Enter Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
+        <div className="inputBox">
+          <input
+            type="text"
+            name="username"
+            required
+            onChange={handleChange}
+          />
+          <span>Username</span>
+        </div>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Enter Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
+        <div className="inputBox">
+          <input
+            type="password"
+            name="password"
+            required
+            onChange={handleChange}
+          />
+          <span>Password</span>
+        </div>
 
-        <button type="submit">Login</button>
+        <button>Login</button>
 
-        <p className="message">{message}</p>
-      </form>
+        <p className="msg">{message}</p>
+
+        <p className="switch">
+          Don’t have an account? <a href="/signup">Signup</a>
+        </p>
+      </div>
     </div>
   );
 }
