@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import signupUser from "../queries/signupQuery";
+import { useNavigate } from "react-router-dom";
 import "./Signup.css";
 
 export default function Signup() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -24,7 +27,11 @@ export default function Signup() {
     const res = await signupUser(formData);
 
     if (res.success) {
-      setMessage("Signup successful ✅");
+      setMessage("OTP sent to email 📩");
+
+      // 👉 redirect to OTP page
+      navigate("/verify", { state: { email: formData.email } });
+
     } else {
       setMessage("Signup Failed ❌");
     }
@@ -35,37 +42,41 @@ export default function Signup() {
       <div className="card">
         <h2>Create Account</h2>
 
-        <div className="inputBox">
-          <input
-            type="text"
-            name="username"
-            required
-            onChange={handleChange}
-          />
-          <span>Username</span>
-        </div>
+        {/* ✅ FORM ADDED */}
+        <form onSubmit={handleSubmit}>
+          <div className="inputBox">
+            <input
+              type="text"
+              name="username"
+              required
+              onChange={handleChange}
+            />
+            <span>Username</span>
+          </div>
 
-        <div className="inputBox">
-          <input
-            type="email"
-            name="email"
-            required
-            onChange={handleChange}
-          />
-          <span>Email</span>
-        </div>
+          <div className="inputBox">
+            <input
+              type="email"
+              name="email"
+              required
+              onChange={handleChange}
+            />
+            <span>Email</span>
+          </div>
 
-        <div className="inputBox">
-          <input
-            type="password"
-            name="password"
-            required
-            onChange={handleChange}
-          />
-          <span>Password</span>
-        </div>
+          <div className="inputBox">
+            <input
+              type="password"
+              name="password"
+              required
+              onChange={handleChange}
+            />
+            <span>Password</span>
+          </div>
 
-        <button>Sign Up</button>
+          {/* ✅ button type submit */}
+          <button type="submit">Sign Up</button>
+        </form>
 
         <p className="msg">{message}</p>
       </div>
