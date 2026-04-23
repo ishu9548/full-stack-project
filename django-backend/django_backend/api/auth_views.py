@@ -1,18 +1,13 @@
 from django.contrib.auth.models import User
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .otp_service import generate_otp
-from django.contrib.auth import authenticate
-
-
-# SIGNUP
-from django.contrib.auth.models import User
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from .otp_service import generate_otp
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 from django.conf import settings
+from .otp_service import generate_otp
+
+# temporary OTP storage
+otp_storage = {}
 
 # SIGNUP
 @api_view(['POST'])
@@ -21,8 +16,14 @@ def signup(request):
     password = request.data.get('password')
     email = request.data.get('email')
 
+    if not username or not password or not email:
+        return Response({'error': 'All fields are required'}, status=400)
+
     if User.objects.filter(username=username).exists():
-        return Response({'error': 'User already exists'})
+        return Response({'error': 'Username already exists'}, status=400)
+
+    if User.objects.filter(email=email).exists():
+        return Response({'error': 'Email already exists'}, status=400)
 
     otp = generate_otp()
 
@@ -32,37 +33,62 @@ def signup(request):
         email=email
     )
 
-    user.first_name = otp
-    user.save()
+    otp_storage[email] = otp
 
-    # send email
     send_mail(
-        subject='SmartHealth OTP Verification',
+        subject='MYProject OTP',
         message=f'Your OTP is {otp}',
         from_email=settings.EMAIL_HOST_USER,
         recipient_list=[email],
         fail_silently=False,
     )
 
-    return Response({'message': 'OTP sent to email'})
+    return Response({'message': 'OTP sent to email'}, status=201)
 
 
-# VERIFY OTP  ✅ SEPARATE FUNCTION
+# VERIFY OTP
 @api_view(['POST'])
 def verify_otp(request):
     email = request.data.get('email')
     otp = request.data.get('otp')
 
-    try:
-        user = User.objects.get(email=email)
+    if not email or not otp:
+        return Response({'error': 'Email and OTP required'}, status=400)
 
-        if user.first_name == otp:
-            return Response({'message': 'Verified'})
-        else:
-            return Response({'error': 'Wrong OTP'})
+    if not User.objects.filter(email=email).exists():
+        return Response({'error': 'User not found'}, status=404)
 
-    except User.DoesNotExist:
-        return Response({'error': 'User not found'})
+    if otp_storage.get(email) == otp:
+        otp_storage.pop(email, None)  # 🔥 remove after success
+
+        return Response({'message': 'OTP verified ✅'}, status=200)
+
+    return Response({'error': 'Wrong OTP ❌'}, status=400)
+
+
+# 🔁 RESEND OTP (NEW)
+@api_view(['POST'])
+def resend_otp(request):
+    email = request.data.get('email')
+
+    if not email:
+        return Response({'error': 'Email required'}, status=400)
+
+    if not User.objects.filter(email=email).exists():
+        return Response({'error': 'User not found'}, status=404)
+
+    otp = generate_otp()
+    otp_storage[email] = otp
+
+    send_mail(
+        subject='MYProject OTP (Resent)',
+        message=f'Your new OTP is {otp}',
+        from_email=settings.EMAIL_HOST_USER,
+        recipient_list=[email],
+        fail_silently=False,
+    )
+
+    return Response({'message': 'OTP resent successfully ✅'}, status=200)
 
 
 # LOGIN
@@ -71,9 +97,16 @@ def login(request):
     username = request.data.get('username')
     password = request.data.get('password')
 
+    if not username or not password:
+        return Response({'error': 'Username and password required'}, status=400)
+
     user = authenticate(username=username, password=password)
 
-    if user is not None:
-        return Response({'message': 'Login successful'})
-    else:
-        return Response({'error': 'Invalid credentials'})
+    if user is None:
+        return Response({'error': 'Invalid credentials ❌'}, status=401)
+
+    # 🔥 IMPORTANT: block login if OTP not verified
+    if user.email in otp_storage:
+        return Response({'error': 'Please verify OTP first ❌'}, status=403)
+
+    return Response({'message': 'Login successful ✅'}, status=200)

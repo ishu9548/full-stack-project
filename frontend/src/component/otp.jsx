@@ -1,30 +1,65 @@
-import React, { useState } from "react";
-import axios from "axios";
-import { useLocation } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import verifyOtpQuery, { resendOtpQuery } from "../queries/otpQuery";
 import "./Login.css";
 
 export default function OtpVerify() {
   const location = useLocation();
-  const email = location.state?.email; // 👈 received email
+  const navigate = useNavigate();
 
+  const [email, setEmail] = useState(location.state?.email || "");
   const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [timer, setTimer] = useState(30);
+
+  // redirect if no email
+  useEffect(() => {
+    if (!email) {
+      navigate("/signup");
+    }
+  }, [email, navigate]);
+
+  // timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    try {
-      const res = await axios.post(
-        "http://127.0.0.1:8000/verify-otp/",
-        {
-          email,
-          otp,
-        }
-      );
+    if (loading) return;
+    setLoading(true);
 
+    const res = await verifyOtpQuery({ email, otp });
+
+    if (res.success) {
       setMessage("OTP Verified ✅");
-    } catch (err) {
+
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } else {
       setMessage("Invalid OTP ❌");
+    }
+
+    setLoading(false);
+  };
+
+  const handleResend = async () => {
+    if (timer > 0) return;
+
+    const res = await resendOtpQuery(email);
+
+    if (res.success) {
+      setMessage("OTP resent 📩");
+      setTimer(30);
+    } else {
+      setMessage("Failed to resend ❌");
     }
   };
 
@@ -33,7 +68,6 @@ export default function OtpVerify() {
       <div className="card">
         <h2>Verify OTP</h2>
 
-        {/* 👇 Show email */}
         <p className="msg">
           OTP sent to <strong>{email}</strong>
         </p>
@@ -50,8 +84,15 @@ export default function OtpVerify() {
             <span>Enter OTP</span>
           </div>
 
-          <button type="submit">Verify</button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Verifying..." : "Verify"}
+          </button>
         </form>
+
+        {/* 🔁 Resend Button */}
+        <button onClick={handleResend} disabled={timer > 0}>
+          {timer > 0 ? `Resend in ${timer}s` : "Resend OTP"}
+        </button>
 
         <p className="msg">{message}</p>
       </div>
