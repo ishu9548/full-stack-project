@@ -13,6 +13,7 @@ export default function Signup() {
   });
 
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false); // ✅ prevent double call
 
   const handleChange = (e) => {
     setFormData({
@@ -24,17 +25,22 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (loading) return; // 🚫 stop duplicate API call
+
+    setLoading(true);
+
     const res = await signupUser(formData);
 
     if (res.success) {
       setMessage("OTP sent to email 📩");
 
       // 👉 redirect to OTP page
-      navigate("/verify", { state: { email: formData.email } });
-
+      navigate("/otp", { state: { email: formData.email } });
     } else {
       setMessage("Signup Failed ❌");
     }
+
+    setLoading(false);
   };
 
   return (
@@ -42,7 +48,6 @@ export default function Signup() {
       <div className="card">
         <h2>Create Account</h2>
 
-        {/* ✅ FORM ADDED */}
         <form onSubmit={handleSubmit}>
           <div className="inputBox">
             <input
@@ -74,8 +79,10 @@ export default function Signup() {
             <span>Password</span>
           </div>
 
-          {/* ✅ button type submit */}
-          <button type="submit">Sign Up</button>
+          {/* ✅ button protected */}
+          <button type="submit" disabled={loading}>
+            {loading ? "Please wait..." : "Sign Up"}
+          </button>
         </form>
 
         <p className="msg">{message}</p>
