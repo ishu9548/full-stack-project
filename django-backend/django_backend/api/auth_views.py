@@ -4,10 +4,21 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db import transaction
 from .otp_service import generate_otp
 
 # temporary OTP storage
 otp_storage = {}
+
+
+def send_otp_email(email, otp, subject="MYProject OTP"):
+    send_mail(
+        subject=subject,
+        message=f"Your OTP is {otp}",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+        fail_silently=False,
+    )
 
 # SIGNUP
 @api_view(['POST'])
@@ -27,23 +38,22 @@ def signup(request):
 
     otp = generate_otp()
 
-    user = User.objects.create_user(
-        username=username,
-        password=password,
-        email=email
-    )
+    try:
+        with transaction.atomic():
+            User.objects.create_user(
+                username=username,
+                password=password,
+                email=email,
+            )
+            otp_storage[email] = otp
+            send_otp_email(email, otp)
+    except Exception:
+        return Response(
+            {"error": "Could not send OTP email. Check email configuration."},
+            status=503,
+        )
 
-    otp_storage[email] = otp
-
-    send_mail(
-        subject='MYProject OTP',
-        message=f'Your OTP is {otp}',
-        from_email=settings.EMAIL_HOST_USER,
-        recipient_list=[email],
-        fail_silently=False,
-    )
-
-    return Response({'message': 'OTP sent to email'}, status=201)
+    return Response({"message": "OTP sent to email"}, status=201)
 
 
 # VERIFY OTP
@@ -80,15 +90,15 @@ def resend_otp(request):
     otp = generate_otp()
     otp_storage[email] = otp
 
-    send_mail(
-        subject='MYProject OTP (Resent)',
-        message=f'Your new OTP is {otp}',
-        from_email=settings.EMAIL_HOST_USER,
-        recipient_list=[email],
-        fail_silently=False,
-    )
+    try:
+        send_otp_email(email, otp, subject="MYProject OTP (Resent)")
+    except Exception:
+        return Response(
+            {"error": "Could not send OTP email. Check email configuration."},
+            status=503,
+        )
 
-    return Response({'message': 'OTP resent successfully ✅'}, status=200)
+    return Response({"message": "OTP resent successfully ✅"}, status=200)
 
 
 # LOGIN
